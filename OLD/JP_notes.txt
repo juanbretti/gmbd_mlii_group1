@@ -1,0 +1,34 @@
+feature importance
+Todo leído
+
+filtering examples
+No dice mucho
+
+
+regularization
+¿Debería poner algo de esto?
+
+session 3\2.FeatureEngineering.pdf
+pag 11
+1. Do you have domain knowledge? Ad hoc features
+2. Are your feature commensurate? Normalize
+3. Interdependence of features? Correlation
+4. Prune input variables? Feature Selection
+5. Assess features individually? Disjunctive features
+6. Suspect data is dirty? Outliers detection
+7. Don’t know what to try first? Linear predictor
+8. Have more ideas and time? Feature Construction
+9. Want a stable solution? Subsample & redo
+Introduction
+
+
+session 4
+fe blidcredit examples
+creo que está Todo
+
+sessio 5
+evauation metrics
+evaluation and validation.ipynb
+No tengo problemas de undersampling
+Lo de Smote y esas yerbas, no tengo que hacer nada
+¿Debería hacer algo más sobre boostrapping?
