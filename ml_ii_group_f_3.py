@@ -252,7 +252,7 @@ def scaler_robust(df, target_encoded, encoder=None):
     df_cat = df[target_encoded]
     df_columns = df.columns
     if encoder is None:
-        encoder = RobustScaler()
+        encoder = StandardScaler()
         encoder.fit(df.drop(target_encoded, axis=1))
     df = encoder.transform(df.drop(target_encoded, axis=1))
     df = pd.DataFrame(df, columns = df_columns[:-1])
