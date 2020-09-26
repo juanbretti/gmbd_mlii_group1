@@ -96,7 +96,7 @@ import pickle
 ## Loading data ----
 
 df = pd.read_csv('raw/modeling_set.csv')
-full_execution = True
+full_execution = False
 target = 'round_winner'
 features = [column for column in df.columns if column != target]
 
@@ -879,11 +879,11 @@ params = {
         'gamma': [None, 0.5, 1, 1.5, 2, 5],
         'subsample': [None, 0.6, 0.8, 1.0],
         'colsample_bytree': [None, 0.6, 0.8, 1.0],
-        'max_depth': [None, 3, 4, 5]
+        'max_depth': [5, 10]
         }
 
 folds = 3
-param_comb = 5
+param_comb = 50
 cv_ = 3
 
 xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, learning_rate=0.02, n_estimators=600, nthread=-1)
@@ -901,8 +901,10 @@ timer(start_time) # timing ends here for "start_time" variable
 xgb_model_after_search = xgb_model_search.best_estimator_
 xgb_scores_tunned = cross_val_score(xgb_model_after_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
-plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB tunned', 'XGB', 'GBC', 'KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([xgb_scores_tunned, lr_scores], \
+    ['XGB tunned', 'LR'])
+# plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+#     ['XGB tunned', 'XGB', 'GBC', 'KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
 # ### Hyperparameter tunning XGBoost, grid search
@@ -1046,7 +1048,8 @@ plot_scores([lr_scores_validation], ['LR val'])
 # %%
 xgb_scores_tunned_validation = cross_val_score(xgb_model_after_search, X_validation, y_validation, scoring='accuracy', cv=20, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.4f)" % (np.median(xgb_scores_tunned_validation), np.std(xgb_scores_tunned_validation)))
-plot_scores([xgb_scores_tunned_validation, lr_scores_validation], ['XGB tunned val', 'LR val'])
+plot_scores([xgb_scores_tunned_validation], ['XGB tunned val'])
+# plot_scores([xgb_scores_tunned_validation, lr_scores_validation], ['XGB tunned val', 'LR val'])
 
 # %%
 rf_scores_validation = cross_val_score(rf_model, X_validation, y_validation, scoring='accuracy', cv=20, n_jobs=-1)
