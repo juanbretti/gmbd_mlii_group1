@@ -92,6 +92,12 @@ features = [column for column in df.columns if column != target]
 # To have all the columns in the same DataFrame
 df['bomb_planted'] = 1.*df['bomb_planted']
 
+# Apply log to some columns
+columns_log = ['time_left', 'ct_health', 't_health', 'ct_armor', 't_armor', 'ct_money', 't_money']
+df[columns_log] = df[columns_log].apply(lambda x: np.log(x+1))
+
+# TODO: Clarificar
+
 # %% [markdown]
 # # EDA
 # Exploratory data analysis (EDA) using the library `pandas_profiling`, [link to the repository](https://github.com/pandas-profiling/pandas-profiling).<br>
@@ -131,20 +137,20 @@ def remove_and_filtering(df):
         DataFrame: Same structure DataFrame
     """
     # Remove fully NA columns
-    print('Remove fully NA columns')
+    print('** Remove fully NA columns')
     print(f'Shape before {df.shape}')
     df.dropna(axis='columns', how='all', inplace=True)
     print(f'Shape after {df.shape}')
 
     # Remove constant value columns
-    print('Remove constant value columns')
+    print('** Remove constant value columns')
     print(f'Shape before {df.shape}')
     col_unique = df.columns[df.nunique()==1]
     df.drop(col_unique, axis=1, inplace=True)
     print(f'Shape after {df.shape}')
 
     # Remove duplicate rows
-    print('Remove duplicate rows')
+    print('** Remove duplicate rows')
     print(f'Number of duplicates {df.duplicated().sum()} rows to be removed')
     df.drop_duplicates(inplace=True)
 
@@ -224,7 +230,7 @@ def target_encoder(df, target_encoded, encoder=None):
     df = pd.concat([df.reset_index().drop(columns="index"), df_cat.reset_index().drop(columns="index")], axis=1)
     return df, encoder
 
-df, enc_target = target_encoder(df, target_encoded)
+# df, enc_target = target_encoder(df, target_encoded)
 
 # %% [markdown]
 # ## StandardScaler
@@ -940,6 +946,7 @@ df_validation = pd.read_csv('raw/validation_set.csv')
 
 # Column type casting
 df_validation['bomb_planted'] = 1.*df_validation['bomb_planted']
+df_validation[columns_log] = df_validation[columns_log].apply(lambda x: np.log(x+1))
 # TargetEncoder
 df_validation, _ = label_encoder(df_validation, map_, map_encoded, enc_le_map)
 df_validation, _ = label_encoder(df_validation, target, target_encoded, enc_le_target)
