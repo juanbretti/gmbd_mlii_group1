@@ -828,7 +828,27 @@ plot_scores([gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_aft
 ### XGBoost ----
 # https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
 
-xgb_model = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, learning_rate=0.02, n_estimators=600, nthread=-1)
+# xgb_model = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, learning_rate=0.02, n_estimators=600, nthread=-1)
+
+xgb_model = xgb.XGBClassifier(tree_method='gpu_hist', gpu_id=0, nthread=-1, 
+                    max_depth=10,
+                    learning_rate=0.3,
+                    gamma=0.0,
+                    min_child_weight=0.0,
+                    max_delta_step=0.0,
+                    subsample=1.0,
+                    colsample_bytree=1.0,
+                    colsample_bylevel=1.0,
+                    reg_alpha=0.0,
+                    reg_lambda=1.0,
+                    n_estimators=115,
+                    silent=0,
+                    scale_pos_weight=1.0,
+                    base_score=0.5,
+                    seed=1337,
+                    missing=None
+                  )
+
 xgb_scores = cross_val_score(xgb_model, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores), np.std(xgb_scores)))
 plot_scores([xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
@@ -847,18 +867,26 @@ plot_scores([xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, 
 # https://xgboost.readthedocs.io/en/latest/gpu/
 
 params = {
-        'min_child_weight': [None, 1, 5, 10],
-        'gamma': [None, 0.5, 1, 1.5, 2, 5],
-        'subsample': [None, 0.6, 0.8, 1.0],
+        'learning_rate': [0.01, 0.3, 0.5],
+        'min_child_weight': [None, 0, 1, 5, 10],
+        'gamma': [None, 0, 0.5, 1, 1.5, 2, 5],
         'colsample_bytree': [None, 0.6, 0.8, 1.0],
-        'max_depth': [5, 10]
+        'max_depth': [5, 10],
+        'subsample': [0.75, 1],
+        'n_estimators': [100, 200, 500],
+        'max_delta_step': [0.0],
+        'colsample_bylevel': [1.0],
+        'reg_alpha': [0.0],
+        'reg_lambda': [1.0],
+        'base_score': [0.5],
+        'missing': [None]
         }
 
 folds = 3
 param_comb = 50
 cv_ = 3
 
-xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, learning_rate=0.02, n_estimators=600, nthread=-1)
+xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
 xgb_model_search = RandomizedSearchCV(xgb_model_random, param_distributions=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
 
 # Here we go
@@ -944,11 +972,12 @@ def model_accuracy(model, df=df_validation, decimals=2):
     print(f'Accuracy: {(accuracy_score(y_validation, y_pred)*100).round(decimals)}%')
 
 # %%
-model_accuracy(lr_model)
+model_accuracy(lr_model.fit(X, y))
+model_accuracy(xgb_model.fit(X, y))
 model_accuracy(xgb_model_after_search)
-model_accuracy(rf_model)
+model_accuracy(rf_model.fit(X, y))
 model_accuracy(rf_model_after_search)
-model_accuracy(knn_model)
+model_accuracy(knn_model.fit(X, y))
 model_accuracy(knn_model_after_search)
 
 # %% [markdown]
