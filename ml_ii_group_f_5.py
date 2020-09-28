@@ -228,6 +228,18 @@ df = remove_and_filtering(df)
 ### TargetEncoder ----
 # OneDrive/GMBD/MACHINE LEARNING II (MBD-EN-BL2020J-1_32R202_380379)/Session 4 - Feature Engineering/FE BlindCredit example (original 2).ipynb
 
+def one_hot_encoder(df, column_):
+    """One hot encoder using Pandas
+
+    Args:
+        df (DataFrame): Source data
+
+    Returns:
+        DataFrame: Same as source
+    """
+    dummied = pd.get_dummies(df, drop_first=True, columns=column_)
+    return dummied
+
 def label_encoder(df, col_source, col_target, encoder=None):
     """Encode columns from string to integers.
 
@@ -249,7 +261,8 @@ def label_encoder(df, col_source, col_target, encoder=None):
     df = df.drop(col_source, axis=1)
     return df, encoder
 
-df, enc_le_map = label_encoder(df, map_, map_encoded)
+# df, enc_le_map = label_encoder(df, map_, map_encoded)
+df = one_hot_encoder(df, [map_])
 df, enc_le_target = label_encoder(df, target, target_encoded)
 
 # For map_
@@ -784,7 +797,7 @@ plot_scores([rf_scores, lr_scores], ['RF', 'LR'])
 #### Hyperparameter tunning RandomForestClassifier, grid search ----
 
 params = {
-    'max_depth': [50, 100, 200],
+    'max_depth': [20, 50, 100],
     'n_estimators': [600, 700, 800]
     }
 cv_ = 3
@@ -990,7 +1003,7 @@ df_validation = pd.read_csv('raw/validation_set.csv')
 # Manual feature construction
 df_validation = feature_construction(df_validation)
 # TargetEncoder
-df_validation, _ = label_encoder(df_validation, map_, map_encoded, enc_le_map)
+df_validation = one_hot_encoder(df_validation, [map_])
 df_validation, _ = label_encoder(df_validation, target, target_encoded, enc_le_target)
 # StandardScaler
 df_validation, _, _ = scaler_transform(df_validation.loc[:, columns_scaler], target_encoded, enc_scaler)

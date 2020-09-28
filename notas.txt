@@ -1,0 +1,8 @@
+
+model_accuracy(rf_model_after_search)
+RandomForestClassifier(max_depth=100, n_estimators=600, n_jobs=-1,
+                       random_state=0)
+Accuracy: 86.17%
+
+
+2020-09-28 09:59:30
