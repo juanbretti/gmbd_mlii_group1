@@ -868,23 +868,6 @@ print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(knn_scores), np.std(knn_scores)
 plot_scores([knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
-# ## GradientBoostingClassifier
-# Gradient Boosting for classification.<br>
-# GB builds an additive model in a forward stage-wise fashion; it allows for the optimization of arbitrary differentiable loss functions. In each stage n_classes_ regression trees are fit on the negative gradient of the binomial or multinomial deviance loss function. Binary classification is a special case where only a single regression tree is induced.<br>
-# Considering the poor results, we don't persue a hyperparameter tunning.
-
-# %%
-### GradientBoostingClassifier ----
-# "OneDrive\GMBD\MACHINE LEARNING II (MBD-EN-BL2020J-1_32R202_380379)\Session 6 - Forum\5 Friday\Tree based methods.ipynb"
-# https://stackoverflow.com/questions/41567895/will-scikit-learn-utilize-gpu
-# https://rapids.ai/xgboost.html
-
-gbc_model = GradientBoostingClassifier(random_state=0)
-gbc_scores = cross_val_score(gbc_model, X, y, scoring='accuracy', cv=10)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(gbc_scores), np.std(gbc_scores)))
-plot_scores([gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-# %% [markdown]
 # ## XGBoost
 # XGBoost is an optimized distributed gradient boosting library designed to be highly efficient, flexible and portable. <br>
 # We had set the library to run in `GPU` to increase tunning performance.<br>
@@ -893,97 +876,6 @@ plot_scores([gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr
 
 # %%
 ### XGBoost ----
-# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
-
-# xgb_model = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, learning_rate=0.02, n_estimators=600, nthread=-1)
-
-xgb_model = xgb.XGBClassifier(tree_method='gpu_hist', gpu_id=0, nthread=-1, 
-                    max_depth=10,
-                    learning_rate=0.3,
-                    gamma=0.0,
-                    min_child_weight=0.0,
-                    max_delta_step=0.0,
-                    subsample=1.0,
-                    colsample_bytree=1.0,
-                    colsample_bylevel=1.0,
-                    reg_alpha=0.0,
-                    reg_lambda=1.0,
-                    n_estimators=115,
-                    scale_pos_weight=1.0,
-                    base_score=0.5,
-                    seed=1337,
-                    missing=None
-                  )
-
-xgb_scores = cross_val_score(xgb_model, X, y, scoring='accuracy', cv=10)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores), np.std(xgb_scores)))
-plot_scores([xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-# %% [markdown]
-# ### Hyperparameter tunning XGBoost, random search
-# Five different parameters will be tunned using random search.<br>
-# The performance of this algorithm hasn't improved. For speeding up this *notebook*, we had reduced the number of *parameter combination*.
-
-# %%
-#### Hyperparameter tunning XGBoost, random search ----
-# https://www.kaggle.com/tilii7/hyperparameter-grid-search-with-xgboost
-# https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/
-# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
-# https://xgboost.readthedocs.io/en/latest/gpu/
-
-params = {
-        'learning_rate': [0.01, 0.3, 0.5],
-        'min_child_weight': [None, 0, 1, 5, 10],
-        'gamma': [None, 0, 0.5, 1, 1.5, 2, 5],
-        'colsample_bytree': [None, 0.6, 0.8, 1.0],
-        'max_depth': [10],
-        'subsample': [0.75, 1],
-        'n_estimators': [100, 500],
-        'max_delta_step': [0.0],
-        'colsample_bylevel': [1.0],
-        'reg_alpha': [0.0],
-        'reg_lambda': [1.0],
-        'base_score': [0.5],
-        'missing': [None]
-        }
-
-folds = 3
-param_comb = 50
-cv_ = 3
-
-xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
-xgb_model_search = RandomizedSearchCV(xgb_model_random, param_distributions=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
-
-# Here we go
-start_time = timer(None) # timing starts from this point for "start_time" variable
-xgb_model_search.fit(X, y)
-timer(start_time) # timing ends here for "start_time" variable
-
-# %%
-# https://stackoverflow.com/a/45074887/3780957
-# Checking the accuracy of the best model
-
-xgb_model_after_search = xgb_model_search.best_estimator_
-xgb_scores_tunned = cross_val_score(xgb_model_after_search, X, y, scoring='accuracy', cv=10)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
-# plot_scores([xgb_scores_tunned, lr_scores], \
-#    ['XGB tunned', 'LR'])
-plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB tunned', 'XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # %% [markdown]
 # ### Hyperparameter tunning XGBoost, bayesian search
@@ -992,8 +884,10 @@ plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_aft
 
 # %%
 #### Hyperparameter tunning XGBoost, bayesian search ----
+# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
 # https://scikit-optimize.github.io/stable/auto_examples/sklearn-gridsearchcv-replacement.html
 # https://neptune.ai/blog/scikit-optimize
+
 from skopt import BayesSearchCV
 
 params = {
@@ -1013,7 +907,7 @@ params = {
         }
 
 folds = 3
-param_comb = 50
+param_comb = 100
 cv_ = 3
 
 xgb_model_bayes = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
@@ -1029,34 +923,12 @@ timer(start_time) # timing ends here for "start_time" variable
 # Checking the accuracy of the best model
 
 xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
-xgb_scores_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
+xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
+print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.std(xgb_scores_bayes_tunned)))
 # plot_scores([xgb_scores_tunned, lr_scores], \
 #    ['XGB tunned', 'LR'])
-plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB tunned', 'XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+plot_scores([xgb_scores_bayes_tunned, xgb_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
 # # Testing dataset
@@ -1109,8 +981,7 @@ df_test, _, _ = pca_transform(data=df_test, target=target_encoded, n=19, encoder
 
 # %%
 model_accuracy(lr_model.fit(X, y), df=df_test)
-model_accuracy(xgb_model.fit(X, y), df=df_test)
-model_accuracy(xgb_model_after_search, df=df_test)
+model_accuracy(xgb_model_after_bayes_search, df=df_test)
 model_accuracy(rf_model.fit(X, y), df=df_test)
 model_accuracy(rf_model_after_search, df=df_test)
 model_accuracy(knn_model.fit(X, y), df=df_test)
@@ -1125,8 +996,8 @@ model_accuracy(knn_model.fit(X, y), df=df_test)
 # filename = 'storage/lr_model.sav'
 # pickle.dump(lr_model, open(filename, 'wb'))
 
-filename = 'storage/xgb_model_after_search.sav'
-pickle.dump(xgb_model_after_search, open(filename, 'wb'))
+filename = 'storage/xgb_model_after_bayes_search.sav'
+pickle.dump(xgb_model_after_bayes_search, open(filename, 'wb'))
 
 # filename = 'storage/rf_model.sav'
 # pickle.dump(rf_model, open(filename, 'wb'))
@@ -1185,8 +1056,6 @@ df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n
 
 # %%
 model_accuracy(lr_model.fit(X, y), df=df_validation)
-model_accuracy(xgb_model.fit(X, y), df=df_validation)
-model_accuracy(xgb_model_after_search, df=df_validation)
 model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 model_accuracy(rf_model.fit(X, y), df=df_validation)
 model_accuracy(rf_model_after_search, df=df_validation)
