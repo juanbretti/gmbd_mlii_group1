@@ -80,8 +80,7 @@ import pickle
 # %% [markdown]
 # # Loading data
 # Loading the `modelling set data` from the CSV file.<br>
-# After some testing, we realized the best performance in the *validation*, was obtained by reducing the *validation* dataset.<br>
-# So we are not splitting rows between `train` and `test` for this exercise. 
+# We are splitting rows between `train` and `test` for this exercise. To evaluate the performance of our model. 
 
 # %%
 ## Loading data ----
@@ -89,6 +88,21 @@ import pickle
 df = pd.read_csv('raw/modeling_set.csv')
 full_execution = False
 target = 'round_winner'
+
+# %%
+### Split dataset ----
+X = df.drop(target, axis=1)
+y = df[target]
+
+X, X_test, y, y_test = train_test_split(X, y, test_size=0.3, random_state=1, stratify=y)
+
+# Train
+df = X
+df[target] = y
+
+# Test
+df_test = X_test
+df_test[target] = y_test
 
 # %% [markdown]
 # # EDA
@@ -237,8 +251,7 @@ df = remove_and_filtering(df)
 # ## TargetEncoder
 # The following, converts the categorical columns into numerical.<br>
 # It assigns an `integer` to each categorical `string`.<br>
-# We tested using `pd.get_dummies` and also `LabelEncoder` with not significant difference in results. Because we are running this model in a computer with high amount of RAM, we are going to use for the final model `One-Hot Encoding`.<br>
-# Because of the last, we are also deactivating `TargetEncoder`.
+# We tested using `pd.get_dummies` and also `LabelEncoder`, the second with not significant difference in results. Because we are running this model in a computer with high amount of RAM, we are going to use for the final model `One-Hot Encoding`.<br>
 
 # %%
 ### TargetEncoder ----
@@ -344,10 +357,9 @@ df, enc_scaler, columns_scaler = scaler_transform(df, target_encoded)
 # ## Correlation
 # Calculating `correlation` between variables.<br>
 # This `correlation` will help to filter highly correlated columns.<br>
-# In particular, after testing the training models, we realize the filter of column was not improving the `accuracy` of our model. So we are not including this filter.
 
 # %%
-### Correlation [not in use] ----
+### Correlation ----
 
 def correlation_plot(df, target_encoded):
     """Plot a sorted correlation plot.
@@ -399,10 +411,10 @@ def correlation_filter(df, threshold=0.99):
 
 if full_execution:
     correlation_plot(df, target_encoded)    
-# print('Correlation filter')
-# print(f'Shape before {df.shape}')
-# df = correlation_filter(df, .99)
-# print(f'Shape after {df.shape}')
+print('Correlation filter')
+print(f'Shape before {df.shape}')
+df = correlation_filter(df, .90)
+print(f'Shape after {df.shape}')
 
 # %% [markdown]
 # ## SymbolicTransformer
@@ -466,14 +478,47 @@ def symbolic_transformer_fit(df, encoder=None):
 
 df, enc_gp, columns_symbolic = symbolic_transformer_fit(df)
 
-# %%
-## Feature importance ----
-
 # %% [markdown]
 # # Feature importance
 # In the following section we will select the most relevant features. These will be source for our ML model.
 
-# ## RelieF Algorithm 
+# %%
+## Feature importance ----
+
+# %% [markdown]
+# ## Outliers
+# In the following section, we filter `outliers` datapoint.<br>
+# Particularly, we tried the algorithm `IsolationForest`. <br>
+
+# %%
+### Outliers ----
+
+def outliers_isolation_forest(df, target_encoded, encoder=None, contamination=0.001):
+    """Using 'Isolation Forest', filters the outliers data points
+
+    Args:
+        df (DataFrame): Source data
+        target_encoded (str): Target column name
+        encoder (obj, optional): Object of the type 'IsolationForest'. Defaults to None.
+        contamination (float, optional): Threshold to remove the outliers. Defaults to 0.001.
+
+    Returns:
+        DataFrame: Same as source
+    """
+    if encoder is None:
+        encoder = IsolationForest(contamination=contamination)
+        y_pred = encoder.fit(df.drop([target_encoded], axis=1))
+    y_pred = encoder.predict(df.drop([target_encoded], axis=1))
+    mask = y_pred != -1
+    df = df.loc[list(mask), :]
+    return df, encoder
+
+print(f'Shape before {df.shape}')
+df, enc_outliers = outliers_isolation_forest(df, target_encoded)
+print(f'Shape after {df.shape}')
+
+# %% [markdown]
+# ## RelieF Algorithm [not in use]
 # We try to use an implementation RELIEF algorithm that we can find [here](https://github.com/EpistasisLab/scikit-rebate). We will simply specify how many neighbors to consider when comparing each feature with the rest, to measure differences, and how many features do we want at the end of the process.<br>
 # The only caveat is the algorithm expects the values as Numpy arrays with shapes $(m, p)$ for the features ($m$ is the number of tuples/samples and $p$ is the number of predictors/features), and $(m, 1)$ for the target variable (a 1D numpy array, for which we must use the function `ravel()` from Numpy).
 # After several tries, we decided to not include this algorithm in the final pipeline, because the elimination of columns is not improving the `accuracy` of the model.
@@ -560,23 +605,23 @@ def importance_relieff_fit(df, target_encoded, encoder=None, plot=True):
         encoder: Object of the type 'ReliefF'
         columns: List of columns in the resulting data frame 
     """
+    df = df.reset_index().drop(columns="index")
     X = df.drop(target_encoded, axis=1)
     y = df[target_encoded]
-    X_transformed, encoder = importance_relieff(X, y, n_features_to_select=60, n_neighbors=20, sample_rows=1000, encoder=encoder, plot=plot)
+    X_transformed, encoder = importance_relieff(X, y, n_features_to_select=50, n_neighbors=10, sample_rows=10000, encoder=encoder, plot=plot)
     df = pd.concat([X_transformed.reset_index().drop(columns="index"), y.reset_index().drop(columns="index")], axis=1)
     columns_ = df.columns
     return df, encoder, columns_
 
 # This filter is not being used. Because the 'accuracy' is better without this filter.
-# df, enc_relieff, columns_relieff = importance_relieff_fit(df, target_encoded)
+# df2, enc_relieff, columns_relieff = importance_relieff_fit(df, target_encoded)
 
 # %% [markdown]
 # ## PCA
 # The following is an implementation of the `Principal Component Analysis`.<br>
-# After some testing and measuring the performance of our model, we decided to not include the `PCA` in the final preprocessing pipeline.
 
 # %%
-### PCA [not in use] ----
+### PCA ----
 # OneDrive\GMBD\MACHINE LEARNING II (MBD-EN-BL2020J-1_32R202_380379)\Session 9 - Forum - Dimensionality Reduction\Notebook on PCA\PCA_v2.ipynb
 
 name = "Accent"
@@ -648,7 +693,7 @@ def pca_plot_density(data, target):
         data (DataFrame): Source data
         target (str): Target column name
     """
-    categories = data[target].unique()
+    # categories = data[target].unique()
     category_series = data[target]
 
     fig, axs = plt.subplots(3, 3)
@@ -673,42 +718,10 @@ def pca_plot_density(data, target):
     plt.show()
 
 # %%
-# df_pca, df_explained_variance, enc_pca = pca_transform(data=df, target=target_encoded, n=7)
-# print(df_explained_variance.round(2))
-# pca_plot_scatter(data=df_pca, target=target_encoded, axis1=1, axis2=2)
-
-# %% [markdown]
-# ## Outliers
-# In the following section, we filter `outliers` datapoint.<br>
-# Particularly, we tried the algorithm `IsolationForest`. <br>
-# After some trials, we tested there was not improvement in the model `accuracy` by filtering outlier rows. So we are not including this in the pipeline.
-
-# %%
-### Outliers [not in use] ----
-
-def outliers_isolation_forest(df, target_encoded, encoder=None, contamination=0.001):
-    """Using 'Isolation Forest', filters the outliers data points
-
-    Args:
-        df (DataFrame): Source data
-        target_encoded (str): Target column name
-        encoder (obj, optional): Object of the type 'IsolationForest'. Defaults to None.
-        contamination (float, optional): Threshold to remove the outliers. Defaults to 0.001.
-
-    Returns:
-        DataFrame: Same as source
-    """
-    if encoder is None:
-        encoder = IsolationForest(contamination=contamination)
-        y_pred = encoder.fit(df.drop([target_encoded], axis=1))
-    y_pred = encoder.predict(df.drop([target_encoded], axis=1))
-    mask = y_pred != -1
-    df = df.loc[list(mask), :]
-    return df, encoder
-
-# print(f'Shape before {df.shape}')
-# df, enc_outliers = outliers_isolation_forest(df, target_encoded)
-# print(f'Shape after {df.shape}')
+df, df_explained_variance, enc_pca = pca_transform(data=df, target=target_encoded, n=19)
+if full_execution:
+    print(np.cumsum(df_explained_variance).round(4))
+    pca_plot_scatter(data=df, target=target_encoded, axis1=1, axis2=2)
 
 # %% [markdown]
 # # EDA after preprocessing
@@ -718,7 +731,7 @@ def outliers_isolation_forest(df, target_encoded, encoder=None, contamination=0.
 ## EDA after preprocessing ----
 if full_execution:
     profile = ProfileReport(df, title="CS:GO >> After", minimal=True)
-    profile.to_file("storage/df_report_after3.html")
+    profile.to_file("storage/df_report_after.html")
 
 # %%
 ## Training model ----
@@ -815,10 +828,10 @@ plot_scores([rf_scores, lr_scores], ['RF', 'LR'])
 #### Hyperparameter tunning RandomForestClassifier, grid search ----
 
 params = {
-    'n_estimators': [200, 400, 600, 700, 1200],
-    'max_depth': [30, 50, 100],
-    'min_samples_split': [2, 10, 100],
-    'min_samples_leaf': [2, 5, 10] 
+    'n_estimators': [200, 600],
+    'max_depth': [30, 100],
+    'min_samples_split': [2, 10],
+    'min_samples_leaf': [1, 2, 5] 
     }
 cv_ = 3
 
@@ -855,38 +868,10 @@ print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(knn_scores), np.std(knn_scores)
 plot_scores([knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
-# ### Hyperparameter tunning KNeighborsClassifier, grid search
-# As before, because this algorithm performs so well, we tried to improve the `accuracy`, by doing a computing intensive hyperparameter tunning.<br>
-# We implemented a `grid search` to find the best performing parameter.
-
-# %%
-#### Hyperparameter tunning KNeighborsClassifier, grid search ----
-
-params = {'n_neighbors': range(1, 10)}
-cv_ = 3
-
-knn_model_grid = KNeighborsClassifier(n_jobs=-1)
-knn_model_search = GridSearchCV(knn_model_grid, param_grid=params, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3)
-
-# Here we go
-start_time = timer(None) # timing starts from this point for "start_time" variable
-knn_model_search.fit(X, y)
-timer(start_time) # timing ends here for "start_time" variable
-
-# %%
-# Checking the accuracy of the best model
-
-knn_model_after_search = knn_model_search.best_estimator_
-knn_model_after_search_scores = cross_val_score(knn_model_after_search, X, y, scoring='accuracy', cv=10, n_jobs=-1)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(knn_model_after_search_scores), np.std(knn_model_after_search_scores)))
-plot_scores([knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-# %% [markdown]
 # ## GradientBoostingClassifier
 # Gradient Boosting for classification.<br>
 # GB builds an additive model in a forward stage-wise fashion; it allows for the optimization of arbitrary differentiable loss functions. In each stage n_classes_ regression trees are fit on the negative gradient of the binomial or multinomial deviance loss function. Binary classification is a special case where only a single regression tree is induced.<br>
 # Considering the poor results, we don't persue a hyperparameter tunning.
-
 
 # %%
 ### GradientBoostingClassifier ----
@@ -897,7 +882,7 @@ plot_scores([knn_model_after_search_scores, knn_scores, rf_model_after_search_sc
 gbc_model = GradientBoostingClassifier(random_state=0)
 gbc_scores = cross_val_score(gbc_model, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(gbc_scores), np.std(gbc_scores)))
-plot_scores([gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['GBC', 'KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
 # ## XGBoost
@@ -924,7 +909,6 @@ xgb_model = xgb.XGBClassifier(tree_method='gpu_hist', gpu_id=0, nthread=-1,
                     reg_alpha=0.0,
                     reg_lambda=1.0,
                     n_estimators=115,
-                    silent=0,
                     scale_pos_weight=1.0,
                     base_score=0.5,
                     seed=1337,
@@ -933,8 +917,8 @@ xgb_model = xgb.XGBClassifier(tree_method='gpu_hist', gpu_id=0, nthread=-1,
 
 xgb_scores = cross_val_score(xgb_model, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores), np.std(xgb_scores)))
-plot_scores([xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB', 'GBC', 'KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
 
 # %% [markdown]
 # ### Hyperparameter tunning XGBoost, random search
@@ -953,9 +937,9 @@ params = {
         'min_child_weight': [None, 0, 1, 5, 10],
         'gamma': [None, 0, 0.5, 1, 1.5, 2, 5],
         'colsample_bytree': [None, 0.6, 0.8, 1.0],
-        'max_depth': [5, 10],
+        'max_depth': [10],
         'subsample': [0.75, 1],
-        'n_estimators': [100, 200, 500],
+        'n_estimators': [100, 500],
         'max_delta_step': [0.0],
         'colsample_bylevel': [1.0],
         'reg_alpha': [0.0],
@@ -983,10 +967,101 @@ timer(start_time) # timing ends here for "start_time" variable
 xgb_model_after_search = xgb_model_search.best_estimator_
 xgb_scores_tunned = cross_val_score(xgb_model_after_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
-plot_scores([xgb_scores_tunned, lr_scores], \
-    ['XGB tunned', 'LR'])
-# plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_model_after_search_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-#     ['XGB tunned', 'XGB', 'GBC', 'KNN tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+# plot_scores([xgb_scores_tunned, lr_scores], \
+#    ['XGB tunned', 'LR'])
+plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB tunned', 'XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# %% [markdown]
+# ### Hyperparameter tunning XGBoost, Bayesian search
+# Five different parameters will be tunned using random search.<br>
+# The performance of this algorithm hasn't improved. For speeding up this *notebook*, we had reduced the number of *parameter combination*.
+
+# %%
+#### Hyperparameter tunning XGBoost, random search ----
+# https://www.kaggle.com/tilii7/hyperparameter-grid-search-with-xgboost
+# https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/
+# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
+# https://xgboost.readthedocs.io/en/latest/gpu/
+
+# https://scikit-optimize.github.io/stable/auto_examples/sklearn-gridsearchcv-replacement.html
+# https://neptune.ai/blog/scikit-optimize
+from skopt import BayesSearchCV
+
+params = {
+        'learning_rate': [0.01, 0.3, 0.5],
+        'min_child_weight': [None, 0, 1, 5, 10],
+        'gamma': [None, 0, 0.5, 1, 1.5, 2, 5],
+        'colsample_bytree': [None, 0.6, 0.8, 1.0],
+        'max_depth': [10],
+        'subsample': [0.75, 1],
+        'n_estimators': [100, 500],
+        'max_delta_step': [0.0],
+        'colsample_bylevel': [1.0],
+        'reg_alpha': [0.0],
+        'reg_lambda': [1.0],
+        'base_score': [0.5],
+        'missing': [None]
+        }
+
+folds = 3
+param_comb = 50
+cv_ = 3
+
+xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
+xgb_model_search = BayesSearchCV(xgb_model_random, param_distributions=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
+
+# Here we go
+start_time = timer(None) # timing starts from this point for "start_time" variable
+xgb_model_search.fit(X, y)
+timer(start_time) # timing ends here for "start_time" variable
+
+# %%
+# https://stackoverflow.com/a/45074887/3780957
+# Checking the accuracy of the best model
+
+xgb_model_after_search = xgb_model_search.best_estimator_
+xgb_scores_tunned = cross_val_score(xgb_model_after_search, X, y, scoring='accuracy', cv=10)
+print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
+# plot_scores([xgb_scores_tunned, lr_scores], \
+#    ['XGB tunned', 'LR'])
+plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB tunned', 'XGB', 'GBC', 'KNN', 'RF tunned', 'RF', 'LR'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # %% [markdown]
 # # Testing dataset
@@ -994,6 +1069,81 @@ plot_scores([xgb_scores_tunned, lr_scores], \
 
 # %%
 ## Testing dataset ----
+
+# %%
+
+def model_accuracy(model, df=df_test, decimals=2):
+    """Print model `accuracy`
+
+    Args:
+        model (object): Sklearn model
+        y_pred (Series, optional): Dependent variable. Defaults to y_pred.
+        decimals (int, optional): Number of decimals to print the `accuracy`. Defaults to 2.
+    """
+    X_validation = df.drop([target_encoded], axis=1)
+    y_validation = df[target_encoded]
+    y_pred = model.predict(X_validation)
+    print(model)
+    print(f'Accuracy: {(accuracy_score(y_validation, y_pred)*100).round(decimals)}%')
+
+# %% [markdown]
+# ## Preprocessing
+# Applied the *preprocessing* pipeline.
+
+# %%
+### Preprocessing ----
+
+# Manual feature construction
+df_test = feature_construction(df_test)
+# TargetEncoder
+df_test = one_hot_encoder(df_test, [map_])
+df_test, _ = label_encoder(df_test, target, target_encoded, enc_le_target)
+# StandardScaler
+df_test, _, _ = scaler_transform(df_test.loc[:, columns_scaler], target_encoded, enc_scaler)
+# SymbolicTransformer
+df_test, _, _ = symbolic_transformer_fit(df_test.loc[:, columns_symbolic], enc_gp)
+# PCA
+df_test, _, _ = pca_transform(data=df_test, target=target_encoded, n=19, encoder=enc_pca)
+
+# %% [markdown]
+# ## Model predict
+# Applied the *tunned* models.
+
+# %%
+### Model predict ----
+
+# %%
+model_accuracy(lr_model.fit(X, y), df=df_test)
+model_accuracy(xgb_model.fit(X, y), df=df_test)
+model_accuracy(xgb_model_after_search, df=df_test)
+model_accuracy(rf_model.fit(X, y), df=df_test)
+model_accuracy(rf_model_after_search, df=df_test)
+model_accuracy(knn_model.fit(X, y), df=df_test)
+
+# %% [markdown]
+# # Storing the models
+
+# %%
+## Model save ----
+# https://machinelearningmastery.com/save-load-machine-learning-models-python-scikit-learn/
+
+# filename = 'storage/lr_model.sav'
+# pickle.dump(lr_model, open(filename, 'wb'))
+
+filename = 'storage/xgb_model_after_search.sav'
+pickle.dump(xgb_model_after_search, open(filename, 'wb'))
+
+# filename = 'storage/rf_model.sav'
+# pickle.dump(rf_model, open(filename, 'wb'))
+
+filename = 'storage/rf_model_after_search.sav'
+pickle.dump(rf_model_after_search, open(filename, 'wb'))
+
+# filename = 'storage/knn_model.sav'
+# pickle.dump(knn_model, open(filename, 'wb'))
+
+# filename = 'storage/knn_model_after_search.sav'
+# pickle.dump(knn_model_after_search, open(filename, 'wb'))
 
 # %% [markdown]
 ## Validation dataset
@@ -1027,6 +1177,9 @@ df_validation, _ = label_encoder(df_validation, target, target_encoded, enc_le_t
 df_validation, _, _ = scaler_transform(df_validation.loc[:, columns_scaler], target_encoded, enc_scaler)
 # SymbolicTransformer
 df_validation, _, _ = symbolic_transformer_fit(df_validation.loc[:, columns_symbolic], enc_gp)
+# PCA
+df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n=19, encoder=enc_pca)
+
 
 # %% [markdown]
 # ## Model predict
@@ -1036,54 +1189,12 @@ df_validation, _, _ = symbolic_transformer_fit(df_validation.loc[:, columns_symb
 ### Model predict ----
 
 # %%
-
-def model_accuracy(model, df=df_validation, decimals=2):
-    """Print model `accuracy`
-
-    Args:
-        model (object): Sklearn model
-        y_pred (Series, optional): Dependent variable. Defaults to y_pred.
-        decimals (int, optional): Number of decimals to print the `accuracy`. Defaults to 2.
-    """
-    X_validation = df.drop([target_encoded], axis=1)
-    y_validation = df[target_encoded]
-    y_pred = model.predict(X_validation)
-    print(model)
-    print(f'Accuracy: {(accuracy_score(y_validation, y_pred)*100).round(decimals)}%')
-
-# %%
-model_accuracy(lr_model.fit(X, y))
-model_accuracy(xgb_model.fit(X, y))
-model_accuracy(xgb_model_after_search)
-model_accuracy(rf_model.fit(X, y))
-model_accuracy(rf_model_after_search)
-model_accuracy(knn_model.fit(X, y))
-model_accuracy(knn_model_after_search)
-
-# %% [markdown]
-## Storing the models
-
-# %%
-### Model save ----
-# https://machinelearningmastery.com/save-load-machine-learning-models-python-scikit-learn/
-
-filename = 'storage/lr_model.sav'
-pickle.dump(lr_model, open(filename, 'wb'))
-
-filename = 'storage/xgb_model_after_search.sav'
-pickle.dump(xgb_model_after_search, open(filename, 'wb'))
-
-filename = 'storage/rf_model.sav'
-pickle.dump(rf_model, open(filename, 'wb'))
-
-# filename = 'storage/rf_model_after_search.sav'
-# pickle.dump(rf_model_after_search, open(filename, 'wb'))
-
-filename = 'storage/knn_model.sav'
-pickle.dump(knn_model, open(filename, 'wb'))
-
-# filename = 'storage/knn_model_after_search.sav'
-# pickle.dump(knn_model_after_search, open(filename, 'wb'))
+model_accuracy(lr_model.fit(X, y), df=df_validation)
+model_accuracy(xgb_model.fit(X, y), df=df_validation)
+model_accuracy(xgb_model_after_search, df=df_validation)
+model_accuracy(rf_model.fit(X, y), df=df_validation)
+model_accuracy(rf_model_after_search, df=df_validation)
+model_accuracy(knn_model.fit(X, y), df=df_validation)
 
 # %% [markdown]
 # ## Prediction
