@@ -986,17 +986,12 @@ plot_scores([xgb_scores_tunned, xgb_scores, gbc_scores, knn_scores, rf_model_aft
 
 
 # %% [markdown]
-# ### Hyperparameter tunning XGBoost, Bayesian search
+# ### Hyperparameter tunning XGBoost, bayesian search
 # Five different parameters will be tunned using random search.<br>
 # The performance of this algorithm hasn't improved. For speeding up this *notebook*, we had reduced the number of *parameter combination*.
 
 # %%
-#### Hyperparameter tunning XGBoost, random search ----
-# https://www.kaggle.com/tilii7/hyperparameter-grid-search-with-xgboost
-# https://www.analyticsvidhya.com/blog/2016/03/complete-guide-parameter-tuning-xgboost-with-codes-python/
-# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
-# https://xgboost.readthedocs.io/en/latest/gpu/
-
+#### Hyperparameter tunning XGBoost, bayesian search ----
 # https://scikit-optimize.github.io/stable/auto_examples/sklearn-gridsearchcv-replacement.html
 # https://neptune.ai/blog/scikit-optimize
 from skopt import BayesSearchCV
@@ -1021,20 +1016,20 @@ folds = 3
 param_comb = 50
 cv_ = 3
 
-xgb_model_random = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
-xgb_model_search = BayesSearchCV(xgb_model_random, param_distributions=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
+xgb_model_bayes = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
+xgb_model_search_bayes = BayesSearchCV(xgb_model_bayes, search_spaces=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
 
 # Here we go
 start_time = timer(None) # timing starts from this point for "start_time" variable
-xgb_model_search.fit(X, y)
+xgb_model_search_bayes.fit(X, y)
 timer(start_time) # timing ends here for "start_time" variable
 
 # %%
 # https://stackoverflow.com/a/45074887/3780957
 # Checking the accuracy of the best model
 
-xgb_model_after_search = xgb_model_search.best_estimator_
-xgb_scores_tunned = cross_val_score(xgb_model_after_search, X, y, scoring='accuracy', cv=10)
+xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
+xgb_scores_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_tunned), np.std(xgb_scores_tunned)))
 # plot_scores([xgb_scores_tunned, lr_scores], \
 #    ['XGB tunned', 'LR'])
@@ -1192,6 +1187,7 @@ df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n
 model_accuracy(lr_model.fit(X, y), df=df_validation)
 model_accuracy(xgb_model.fit(X, y), df=df_validation)
 model_accuracy(xgb_model_after_search, df=df_validation)
+model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 model_accuracy(rf_model.fit(X, y), df=df_validation)
 model_accuracy(rf_model_after_search, df=df_validation)
 model_accuracy(knn_model.fit(X, y), df=df_validation)
