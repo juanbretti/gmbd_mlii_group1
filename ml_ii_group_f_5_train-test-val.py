@@ -73,6 +73,7 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier,
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split, RandomizedSearchCV, GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 import xgboost as xgb
+from skopt import BayesSearchCV
 
 # Save model
 import pickle
@@ -854,6 +855,83 @@ rf_model_after_search_scores = cross_val_score(rf_model_after_search, X, y, scor
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_model_after_search_scores), np.std(rf_model_after_search_scores)))
 plot_scores([rf_model_after_search_scores, rf_scores, lr_scores], ['RF tunned', 'RF', 'LR'])
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# %% [markdown]
+# ### Hyperparameter tunning RandomForestClassifier, bayesian search
+# Five different parameters will be tunned using random search.<br>
+# The performance of this algorithm hasn't improved. For speeding up this *notebook*, we had reduced the number of *parameter combination*.
+
+# %%
+#### Hyperparameter tunning RandomForestClassifier, bayesian search ----
+# https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
+# https://scikit-optimize.github.io/stable/auto_examples/sklearn-gridsearchcv-replacement.html
+# https://neptune.ai/blog/scikit-optimize
+
+params = {
+    'n_estimators': [200, 600, 1200],
+    'max_depth': [30, 100, 200],
+    'min_samples_split': [2, 10],
+    'min_samples_leaf': [1, 2, 5] 
+    }
+cv_ = 3
+
+folds = 3
+param_comb = 100
+cv_ = 3
+
+rf_model_bayes = RandomForestClassifier(random_state=0, n_jobs=-1)
+rf_model_bayes_search = BayesSearchCV(rf_model_bayes, search_spaces=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
+
+# Here we go
+start_time = timer(None) # timing starts from this point for "start_time" variable
+rf_model_bayes_search.fit(X, y)
+timer(start_time) # timing ends here for "start_time" variable
+
+# %%
+# https://stackoverflow.com/a/45074887/3780957
+# Checking the accuracy of the best model
+
+rf_model_after_bayes_search = rf_model_bayes_search.best_estimator_
+rf_score_after_bayes = cross_val_score(rf_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
+print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_score_after_bayes), np.std(rf_score_after_bayes)))
+# plot_scores([xgb_scores_tunned, lr_scores], \
+#    ['XGB tunned', 'LR'])
+plot_scores([rf_score_after_bayes, xgb_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # %% [markdown]
 # ## KNeighborsClassifier
 # We tried `KNeighborsClassifier`. Classifier implementing the k-nearest neighbors vote.
@@ -887,8 +965,6 @@ plot_scores([knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['
 # https://www.kaggle.com/stuarthallows/using-xgboost-with-scikit-learn
 # https://scikit-optimize.github.io/stable/auto_examples/sklearn-gridsearchcv-replacement.html
 # https://neptune.ai/blog/scikit-optimize
-
-from skopt import BayesSearchCV
 
 params = {
         'learning_rate': [0.01, 0.3, 0.5],
@@ -1059,6 +1135,7 @@ model_accuracy(lr_model.fit(X, y), df=df_validation)
 model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 model_accuracy(rf_model.fit(X, y), df=df_validation)
 model_accuracy(rf_model_after_search, df=df_validation)
+model_accuracy(rf_model_after_bayes_search, df=df_validation)
 model_accuracy(knn_model.fit(X, y), df=df_validation)
 
 # %% [markdown]
