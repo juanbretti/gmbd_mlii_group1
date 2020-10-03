@@ -201,6 +201,9 @@ def feature_construction(df):
     columns_log = ['time_left', 'ct_health', 't_health', 'ct_armor', 't_armor', 'ct_money', 't_money']
     df[columns_log] = df[columns_log].apply(lambda x: np.log(x+1))
 
+    # # Drop column 'time_left'
+    # df.drop(['time_left'], axis=1, inplace=True)
+
     return df
 
 df = feature_construction(df)
@@ -853,7 +856,7 @@ timer(start_time) # timing ends here for "start_time" variable
 rf_model_after_search = rf_model_search.best_estimator_
 rf_model_after_search_scores = cross_val_score(rf_model_after_search, X, y, scoring='accuracy', cv=3, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_model_after_search_scores), np.std(rf_model_after_search_scores)))
-plot_scores([rf_model_after_search_scores, rf_scores, lr_scores], ['RF tunned', 'RF', 'LR'])
+plot_scores([rf_model_after_search_scores, rf_scores, lr_scores], ['RF grid', 'RF', 'LR'])
 
 # %% [markdown]
 # ### Hyperparameter tunning RandomForestClassifier, bayesian search
@@ -892,10 +895,8 @@ timer(start_time) # timing ends here for "start_time" variable
 rf_model_after_bayes_search = rf_model_bayes_search.best_estimator_
 rf_score_after_bayes = cross_val_score(rf_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_score_after_bayes), np.std(rf_score_after_bayes)))
-# plot_scores([xgb_scores_tunned, lr_scores], \
-#    ['XGB tunned', 'LR'])
-plot_scores([rf_score_after_bayes, xgb_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['RF bayes', 'RF grid', 'RF', 'LR'])
 
 # %% [markdown]
 # ## KNeighborsClassifier
@@ -908,7 +909,7 @@ plot_scores([rf_score_after_bayes, xgb_scores, knn_scores, rf_model_after_search
 knn_model = KNeighborsClassifier(n_neighbors=10, n_jobs=-1)
 knn_scores = cross_val_score(knn_model, X, y, scoring='accuracy', cv=5, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(knn_scores), np.std(knn_scores)))
-plot_scores([knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([knn_scores, rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN', 'RF bayes', 'RF grid', 'RF', 'LR'])
 
 # %% [markdown]
 # ## XGBoost
@@ -966,10 +967,8 @@ timer(start_time) # timing ends here for "start_time" variable
 xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
 xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.std(xgb_scores_bayes_tunned)))
-# plot_scores([xgb_scores_tunned, lr_scores], \
-#    ['XGB tunned', 'LR'])
-plot_scores([xgb_scores_bayes_tunned, xgb_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
-    ['XGB tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
+plot_scores([xgb_scores_bayes_tunned, knn_scores, rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], \
+    ['XGB bayes', 'KNN', 'RF bayes', 'RF grid', 'RF', 'LR'])
 
 # %% [markdown]
 # # Testing dataset
@@ -1022,10 +1021,11 @@ df_test, _, _ = pca_transform(data=df_test, target=target_encoded, n=19, encoder
 
 # %%
 model_accuracy(lr_model.fit(X, y), df=df_test)
-model_accuracy(xgb_model_after_bayes_search, df=df_test)
 model_accuracy(rf_model.fit(X, y), df=df_test)
 model_accuracy(rf_model_after_search, df=df_test)
+model_accuracy(rf_model_after_bayes_search, df=df_test)
 model_accuracy(knn_model.fit(X, y), df=df_test)
+model_accuracy(xgb_model_after_bayes_search, df=df_test)
 
 # %% [markdown]
 # # Storing the models
@@ -1034,23 +1034,23 @@ model_accuracy(knn_model.fit(X, y), df=df_test)
 ## Model save ----
 # https://machinelearningmastery.com/save-load-machine-learning-models-python-scikit-learn/
 
-# filename = 'storage/lr_model.sav'
-# pickle.dump(lr_model, open(filename, 'wb'))
+filename = 'storage/lr_model.sav'
+pickle.dump(lr_model, open(filename, 'wb'))
 
-filename = 'storage/xgb_model_after_bayes_search.sav'
-pickle.dump(xgb_model_after_bayes_search, open(filename, 'wb'))
-
-# filename = 'storage/rf_model.sav'
-# pickle.dump(rf_model, open(filename, 'wb'))
+filename = 'storage/rf_model.sav'
+pickle.dump(rf_model, open(filename, 'wb'))
 
 filename = 'storage/rf_model_after_search.sav'
 pickle.dump(rf_model_after_search, open(filename, 'wb'))
 
-# filename = 'storage/knn_model.sav'
-# pickle.dump(knn_model, open(filename, 'wb'))
+filename = 'storage/rf_model_after_bayes_search.sav'
+pickle.dump(rf_model_after_bayes_search, open(filename, 'wb'))
 
-# filename = 'storage/knn_model_after_search.sav'
-# pickle.dump(knn_model_after_search, open(filename, 'wb'))
+filename = 'storage/knn_model.sav'
+pickle.dump(knn_model, open(filename, 'wb'))
+
+filename = 'storage/xgb_model_after_bayes_search.sav'
+pickle.dump(xgb_model_after_bayes_search, open(filename, 'wb'))
 
 # %% [markdown]
 ## Validation dataset
@@ -1087,7 +1087,6 @@ df_validation, _, _ = symbolic_transformer_fit(df_validation.loc[:, columns_symb
 # PCA
 df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n=19, encoder=enc_pca)
 
-
 # %% [markdown]
 # ## Model predict
 # Applied the *tunned* models.
@@ -1097,11 +1096,11 @@ df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n
 
 # %%
 model_accuracy(lr_model.fit(X, y), df=df_validation)
-model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 model_accuracy(rf_model.fit(X, y), df=df_validation)
 model_accuracy(rf_model_after_search, df=df_validation)
 model_accuracy(rf_model_after_bayes_search, df=df_validation)
 model_accuracy(knn_model.fit(X, y), df=df_validation)
+model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 
 # %% [markdown]
 # ## Prediction
@@ -1110,7 +1109,7 @@ model_accuracy(knn_model.fit(X, y), df=df_validation)
 # %%
 ### Prediction ----
 X_validation = df.drop([target_encoded], axis=1)
-prediction_ = rf_model_after_search.predict(X_validation)
+prediction_ = xgb_model_after_bayes_search.predict(X_validation)
 prediction_ = enc_le_target.inverse_transform(prediction_)
 
 np.savetxt("results/prediction.csv", prediction_, delimiter=",", fmt='%s')
