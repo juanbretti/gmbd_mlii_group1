@@ -855,19 +855,6 @@ rf_model_after_search_scores = cross_val_score(rf_model_after_search, X, y, scor
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_model_after_search_scores), np.std(rf_model_after_search_scores)))
 plot_scores([rf_model_after_search_scores, rf_scores, lr_scores], ['RF tunned', 'RF', 'LR'])
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # %% [markdown]
 # ### Hyperparameter tunning RandomForestClassifier, bayesian search
 # Five different parameters will be tunned using random search.<br>
@@ -885,7 +872,6 @@ params = {
     'min_samples_split': [2, 10],
     'min_samples_leaf': [1, 2, 5] 
     }
-cv_ = 3
 
 folds = 3
 param_comb = 100
@@ -910,27 +896,6 @@ print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_score_after_bayes), np.std(r
 #    ['XGB tunned', 'LR'])
 plot_scores([rf_score_after_bayes, xgb_scores, knn_scores, rf_model_after_search_scores, rf_scores, lr_scores], \
     ['XGB tunned', 'KNN', 'RF tunned', 'RF', 'LR'])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # %% [markdown]
 # ## KNeighborsClassifier
