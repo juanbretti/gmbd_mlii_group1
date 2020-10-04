@@ -38,23 +38,54 @@ clf.fit(X[reduced_features], y)
 #Check accuracy of model after hyperparameter tuning 
 print (f'Train Accuracy: {clf.score(X[reduced_features],y):.3f}')
 print (f'Test Accuracy: {clf.score(X_val[reduced_features],y_val):.3f}')
+
 # %%
+
+import xgboost as xgb
+from skopt import BayesSearchCV
 
 params = {
-    'n_estimators': [100, 250, 600],
-    'max_depth': [None, 30, 100],
-    'min_samples_split': [2, 10],
-    'min_samples_leaf': [1, 2, 5] 
-    }
+        'learning_rate': [0.01, 0.3, 0.5],
+        'min_child_weight': [None, 0, 1, 5, 10],
+        'gamma': [None, 0, 0.5, 1, 1.5, 2, 5],
+        'colsample_bytree': [None, 0.6, 0.8, 1.0],
+        'max_depth': [10],
+        'subsample': [0.75, 1],
+        'n_estimators': [100, 500],
+        'max_delta_step': [0.0],
+        'colsample_bylevel': [1.0],
+        'reg_alpha': [0.0],
+        'reg_lambda': [1.0],
+        'base_score': [0.5],
+        'missing': [None]
+        }
+
+folds = 3
+param_comb = 100
 cv_ = 3
 
-rf_model_grid = RandomForestClassifier(random_state=0, n_jobs=-1)
-rf_model_search = GridSearchCV(rf_model_grid, param_grid=params, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3)
-
-rf_model_search.fit(X, y)
-
-rf_model_after_search = rf_model_search.best_estimator_
-rf_model_after_search_scores = cross_val_score(rf_model_after_search, X, y, scoring='accuracy', cv=3, n_jobs=-1)
-print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_model_after_search_scores), np.std(rf_model_after_search_scores)))
+xgb_model_bayes = xgb.XGBClassifier(objective="binary:logistic", random_state=42, tree_method='gpu_hist', gpu_id=0, nthread=-1)
+xgb_model_search_bayes = BayesSearchCV(xgb_model_bayes, search_spaces=params, n_iter=param_comb, scoring='accuracy', n_jobs=-1, cv=cv_, verbose=3, random_state=42)
+xgb_model_search_bayes.fit(X, y)
 
 # %%
+
+xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
+xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
+print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.std(xgb_scores_bayes_tunned)))
+# %%
+
+
+# XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1.0,
+#               colsample_bynode=1, colsample_bytree=0.8, gamma=0, gpu_id=0,
+#               importance_type='gain', interaction_constraints='',
+#               learning_rate=0.3, max_delta_step=0.0, max_depth=10,
+#               min_child_weight=0, missing=None,
+#               monotone_constraints='(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)',
+#               n_estimators=480, n_jobs=-1, nthread=-1, num_parallel_tree=1,
+#               random_state=42, reg_alpha=0.0, reg_lambda=1.0,
+#               scale_pos_weight=1, subsample=0.9983775297693847,
+#               tree_method='gpu_hist', validate_parameters=1, verbosity=None)
+
+
+# Accuracy: 0.8905 (+/- 0.00)
