@@ -7,7 +7,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score, GridSearchCV
-from sklearn.metrics import accuracy_score, f1_score,recall_score,precision_score, confusion_matrix
+from sklearn.metrics import accuracy_score, f1_score,recall_score,precision_score, confusion_matrix, classification_report
+import xgboost as xgb
+
 # %%
 df = pd.read_csv('raw/csgo_round_snapshots.csv')
 # %%
@@ -27,17 +29,6 @@ reduced_features=['ct_players_alive', 't_grenade_flashbang', 't_weapon_ak47',
        't_grenade_molotovgrenade', 't_health', 'ct_weapon_awp', 't_weapon_awp',
        'ct_money', 't_money', 't_grenade_smokegrenade', 'ct_weapon_m4a4',
        't_armor', 'ct_armor', 't_helmets', 'bomb_planted']
-
-params = {'max_depth': None,
- 'min_samples_leaf': 1,
- 'min_samples_split': 2,
- 'n_estimators': 250}
-clf = RandomForestClassifier(**params)
-clf.fit(X[reduced_features], y)
-
-#Check accuracy of model after hyperparameter tuning 
-print (f'Train Accuracy: {clf.score(X[reduced_features],y):.3f}')
-print (f'Test Accuracy: {clf.score(X_val[reduced_features],y_val):.3f}')
 
 # %%
 
@@ -71,10 +62,10 @@ xgb_model_search_bayes.fit(X, y)
 # %%
 
 xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
-xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
+xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X_val, y_val, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.std(xgb_scores_bayes_tunned)))
-# %%
 
+# %%
 
 # XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1.0,
 #               colsample_bynode=1, colsample_bytree=0.8, gamma=0, gpu_id=0,
@@ -87,5 +78,41 @@ print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.st
 #               scale_pos_weight=1, subsample=0.9983775297693847,
 #               tree_method='gpu_hist', validate_parameters=1, verbosity=None)
 
-
 # Accuracy: 0.8905 (+/- 0.00)
+
+# %%
+model = xgb.XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1.0,
+              colsample_bynode=1, colsample_bytree=0.8, gamma=0, gpu_id=0,
+              importance_type='gain', interaction_constraints='',
+              learning_rate=0.3, max_delta_step=0.0, max_depth=10,
+              min_child_weight=0, missing=None,
+              monotone_constraints='(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)',
+              n_estimators=480, n_jobs=-1, nthread=-1, num_parallel_tree=1,
+              random_state=42, reg_alpha=0.0, reg_lambda=1.0,
+              scale_pos_weight=1, subsample=0.9983775297693847,
+              tree_method='gpu_hist', validate_parameters=1, verbosity=None)
+
+model_trained = model.fit(X, y)
+
+# %%
+
+df_validation = pd.read_csv('raw/validation_set.csv')
+
+label_encoder = LabelEncoder()
+df_validation['bomb_planted']= label_encoder.fit_transform(df_validation['bomb_planted'])
+df_validation['map']= label_encoder.fit_transform(df_validation['map'])
+
+# %%
+num_cols = df_validation.select_dtypes(include=['number']).columns
+scaler = StandardScaler()
+df_validation[num_cols] = scaler.fit_transform(df_validation[num_cols]) 
+
+# %%
+X_validation = df_validation.drop(['round_winner'], axis=1)
+y_validation = df_validation['round_winner']
+
+# %%
+y_pred = model_trained.predict(X_validation)
+accuracy_score(y_validation, y_pred)
+
+# %%
