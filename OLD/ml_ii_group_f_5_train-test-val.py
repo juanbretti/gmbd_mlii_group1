@@ -808,7 +808,7 @@ y = df[target_encoded]
 ### LogisticRegression ----
 lr_model = LogisticRegression()
 lr_model = lr_model.fit(X, y)
-lr_scores = cross_val_score(lr_model, X_val, y_val, scoring='accuracy', cv=20, n_jobs=-1)
+lr_scores = cross_val_score(lr_model, X, y, scoring='accuracy', cv=20, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(lr_scores), np.std(lr_scores)))
 plot_scores([lr_scores], ['LR'])
 
@@ -822,7 +822,7 @@ plot_scores([lr_scores], ['LR'])
 
 rf_model = RandomForestClassifier(random_state=0, n_jobs=-1)
 rf_model = rf_model.fit(X, y)
-rf_scores = cross_val_score(rf_model, X_val, y_val, scoring='accuracy', cv=5)
+rf_scores = cross_val_score(rf_model, X, y, scoring='accuracy', cv=5)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_scores), np.std(rf_scores)))
 plot_scores([rf_scores, lr_scores], ['RF', 'LR'])
 
@@ -856,7 +856,7 @@ timer(start_time) # timing ends here for "start_time" variable
 # Checking the accuracy of the best model
 
 rf_model_after_search = rf_model_search.best_estimator_
-rf_model_after_search_scores = cross_val_score(rf_model_after_search, X_val, y_val, scoring='accuracy', cv=3, n_jobs=-1)
+rf_model_after_search_scores = cross_val_score(rf_model_after_search, X, y, scoring='accuracy', cv=3, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_model_after_search_scores), np.std(rf_model_after_search_scores)))
 plot_scores([rf_model_after_search_scores, rf_scores, lr_scores], ['RF grid', 'RF', 'LR'])
 
@@ -895,7 +895,7 @@ timer(start_time) # timing ends here for "start_time" variable
 # Checking the accuracy of the best model
 
 rf_model_after_bayes_search = rf_model_bayes_search.best_estimator_
-rf_score_after_bayes = cross_val_score(rf_model_after_bayes_search, X_val, y_val, scoring='accuracy', cv=10)
+rf_score_after_bayes = cross_val_score(rf_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(rf_score_after_bayes), np.std(rf_score_after_bayes)))
 plot_scores([rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], \
     ['RF bayes', 'RF grid', 'RF', 'LR'])
@@ -910,7 +910,7 @@ plot_scores([rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_s
 
 knn_model = KNeighborsClassifier(n_neighbors=10, n_jobs=-1)
 knn_model = knn_model.fit(X, y)
-knn_scores = cross_val_score(knn_model, X_val, y_val, scoring='accuracy', cv=5, n_jobs=-1)
+knn_scores = cross_val_score(knn_model, X, y, scoring='accuracy', cv=5, n_jobs=-1)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(knn_scores), np.std(knn_scores)))
 plot_scores([knn_scores, rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], ['KNN', 'RF bayes', 'RF grid', 'RF', 'LR'])
 
@@ -968,7 +968,7 @@ timer(start_time) # timing ends here for "start_time" variable
 # Checking the accuracy of the best model
 
 xgb_model_after_bayes_search = xgb_model_search_bayes.best_estimator_
-xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X_val, y_val, scoring='accuracy', cv=10)
+xgb_scores_bayes_tunned = cross_val_score(xgb_model_after_bayes_search, X, y, scoring='accuracy', cv=10)
 print("Accuracy: %0.4f (+/- %0.2f)" % (np.median(xgb_scores_bayes_tunned), np.std(xgb_scores_bayes_tunned)))
 plot_scores([xgb_scores_bayes_tunned, knn_scores, rf_score_after_bayes, rf_model_after_search_scores, rf_scores, lr_scores], \
     ['XGB bayes', 'KNN', 'RF bayes', 'RF grid', 'RF', 'LR'])
@@ -1098,11 +1098,11 @@ df_validation, _, _ = pca_transform(data=df_validation, target=target_encoded, n
 ### Model predict ----
 
 # %%
-model_accuracy(lr_model.fit(X, y), df=df_validation)
-model_accuracy(rf_model.fit(X, y), df=df_validation)
+model_accuracy(lr_model, df=df_validation)
+model_accuracy(rf_model, df=df_validation)
 model_accuracy(rf_model_after_search, df=df_validation)
 model_accuracy(rf_model_after_bayes_search, df=df_validation)
-model_accuracy(knn_model.fit(X, y), df=df_validation)
+model_accuracy(knn_model, df=df_validation)
 model_accuracy(xgb_model_after_bayes_search, df=df_validation)
 
 # %% [markdown]
